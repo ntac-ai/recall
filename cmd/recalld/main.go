@@ -35,7 +35,7 @@ func main() {
 	// fmt.Println("Server starting on :8080...")
 
 	// Start the server and block
-	err = http.ListenAndServe(fmt.Sprintf(":%d", *portPtr), nil)
+	err = http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", *portPtr), nil)
 
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
