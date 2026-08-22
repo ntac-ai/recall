@@ -12,7 +12,7 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// Register the route and handler
-	http.HandleFunc("/hello", helloHandler)
+	http.HandleFunc("/", helloHandler)
 
 	fmt.Println("Server starting on :8080...")
 
