@@ -1,38 +1,25 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"flag"
 	"fmt"
-	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
-
-	"github.com/1tomany/recall/internal/daemon"
+	"log"
+	"net/http"
 )
 
-func main() {
-	os.Exit(run(os.Args[1:]))
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "Hello, World!")
 }
 
-func run(args []string) int {
-	config, err := daemon.ParseConfig(args, os.Stderr)
-	if errors.Is(err, flag.ErrHelp) {
-		return 0
-	}
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "recalld: %v\n", err)
-		return 2
-	}
+func main() {
+	// Register the route and handler
+	http.HandleFunc("/hello", helloHandler)
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	if err := daemon.Run(ctx, config, logger); err != nil {
-		logger.Error("recalld stopped", "error", err)
-		return 1
+	fmt.Println("Server starting on :8080...")
+
+	// Start the server and block
+	err := http.ListenAndServe(":8080", nil)
+
+	if err != nil {
+		log.Fatalf("Server failed to start: %v", err)
 	}
-	return 0
 }
