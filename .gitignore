@@ -1,6 +1,6 @@
-.DS_Store
+/.build
+/bin
+/vendor
 *.swp
-/bin/
-*.sqlite3
-*.sqlite3-shm
-*.sqlite3-wal
+.DS_Store
+composer.lock
