@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/google/uuid"
 )
 
 type memory struct {
@@ -32,28 +33,6 @@ func (m memory) filename() string {
 func hashMemory(text string) string {
 	sum := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(sum[:])
-}
-
-// uuidV7 implements RFC 9562 section 5.7: 48 timestamp bits, 74 random bits,
-// and the version/variant bits. Ordering within a millisecond is unspecified.
-func uuidV7(now time.Time) string {
-	var id [16]byte
-	rand.Read(id[:])
-	ms := uint64(now.UnixMilli())
-	for i := range 6 {
-		id[5-i] = byte(ms >> (8 * i))
-	}
-	id[6] = id[6]&0x0f | 0x70
-	id[8] = id[8]&0x3f | 0x80
-	return fmt.Sprintf("%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:])
-}
-
-func validUUIDV7(id string) bool {
-	if len(id) != 36 || id[8] != '-' || id[13] != '-' || id[18] != '-' || id[23] != '-' {
-		return false
-	}
-	data, err := hex.DecodeString(strings.ReplaceAll(id, "-", ""))
-	return err == nil && len(data) == 16 && data[6]>>4 == 7 && data[8]>>6 == 2
 }
 
 func validateText(label, value string) error {
@@ -88,8 +67,11 @@ func saveMemory(ctx context.Context, dataDir, project, text, agent, model string
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}
-		now := time.Now()
-		m.ID, m.Created = uuidV7(now), now.UnixMicro()
+		id, err := uuid.NewV7()
+		if err != nil {
+			return "", fmt.Errorf("generate memory ID: %w", err)
+		}
+		m.ID, m.Created = id.String(), time.Now().UnixMicro()
 		data, err := json.MarshalIndent(m, "", "  ")
 		if err != nil {
 			return "", fmt.Errorf("encode memory: %w", err)
@@ -108,7 +90,10 @@ func saveMemory(ctx context.Context, dataDir, project, text, agent, model string
 }
 
 func (m memory) validate(projectName, filename string) error {
-	if !validUUIDV7(m.ID) || m.Created <= 0 {
+	id, err := uuid.Parse(m.ID)
+	// Parse also accepts URNs and unhyphenated UUIDs; memory files use the
+	// canonical 36-character form and require version 7 with the RFC variant.
+	if err != nil || len(m.ID) != 36 || id.Version() != 7 || id.Variant() != uuid.RFC4122 || m.Created <= 0 {
 		return fmt.Errorf("invalid UUID v7 or creation timestamp")
 	}
 	name, err := normalizeName(m.Project)

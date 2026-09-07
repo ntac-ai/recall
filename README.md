@@ -161,9 +161,12 @@ instructions without summarizing, inferring new rules, or resolving conflicts.
 
 ## Development
 
-The application uses only the Go standard library and keeps command parsing,
-memory storage, and skill generation in separate files within a single package.
-Go 1.25 is the minimum because storage uses the extended `os.Root` APIs.
+The application uses the Go standard library plus
+[`github.com/google/uuid`](https://pkg.go.dev/github.com/google/uuid) for UUID v7
+generation and parsing. Command parsing, memory storage, and skill generation
+live in separate files within a single package. Go 1.25 is the minimum because
+storage uses the extended `os.Root` APIs. Third-party license notices are included
+in `THIRD_PARTY_NOTICES` and bundled with release archives.
 
 ```shell
 go mod tidy

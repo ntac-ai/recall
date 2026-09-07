@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -13,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestNormalizeName(t *testing.T) {
@@ -42,24 +43,25 @@ func TestNormalizeName(t *testing.T) {
 	}
 }
 
-func TestUUIDV7(t *testing.T) {
-	// The timestamp is from RFC 9562 Appendix A.6.
-	now := time.UnixMilli(1645557742000)
-	seen := make(map[string]bool)
-	for range 1000 {
-		id := uuidV7(now)
-		if !validUUIDV7(id) || !strings.HasPrefix(id, "017f22e2-79b0-7") {
-			t.Fatalf("invalid version, variant, or timestamp: %s", id)
-		}
-		if seen[id] {
-			t.Fatalf("repeated UUID: %s", id)
-		}
-		seen[id] = true
-	}
-	for _, id := range []string{"", "017f22e2-79b0-4cc3-98c4-dc0c0c07398f", "017f22e2-79b0-7cc3-78c4-dc0c0c07398f", "017f22e2-79b0-7cc3-98c4-dc0c0c07398z"} {
-		if validUUIDV7(id) {
-			t.Fatalf("accepted invalid UUID %q", id)
-		}
+func TestMemoryUUIDValidation(t *testing.T) {
+	for _, tt := range []struct {
+		name, id string
+		wantErr  bool
+	}{
+		{"existing v7", "017f22e2-79b0-7cc3-98c4-dc0c0c07398f", false},
+		{"empty", "", true},
+		{"version 4", "017f22e2-79b0-4cc3-98c4-dc0c0c07398f", true},
+		{"wrong variant", "017f22e2-79b0-7cc3-78c4-dc0c0c07398f", true},
+		{"invalid hex", "017f22e2-79b0-7cc3-98c4-dc0c0c07398z", true},
+		{"unhyphenated", "017f22e279b07cc398c4dc0c0c07398f", true},
+		{"URN", "urn:uuid:017f22e2-79b0-7cc3-98c4-dc0c0c07398f", true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			m := memory{ID: tt.id, Created: 1645557742000000, Project: "project", Agent: "agent", Model: "model", Text: "hello", SHA256: hashMemory("hello")}
+			if err := m.validate("project", m.filename()); (err != nil) != tt.wantErr {
+				t.Fatalf("validate UUID %q = %v; want error %v", tt.id, err, tt.wantErr)
+			}
+		})
 	}
 }
 
@@ -72,7 +74,8 @@ func TestSaveMemory(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := readMemory(t, path)
-	if m.Created < before || m.Created > time.Now().UnixMicro() || !validUUIDV7(m.ID) {
+	id, err := uuid.Parse(m.ID)
+	if m.Created < before || m.Created > time.Now().UnixMicro() || err != nil || id.Version() != 7 || id.Variant() != uuid.RFC4122 {
 		t.Fatalf("invalid identity: %+v", m)
 	}
 	if m.Project != "Field Sheet" || m.Text != text || m.Agent != "Codex" || m.Model != "test-model" {
@@ -99,15 +102,6 @@ func TestSaveMemory(t *testing.T) {
 				t.Fatalf("permissions for %s: %v, %v; want %o", path, info, err, want)
 			}
 		}
-	}
-	// Decode the UUID timestamp independently of the generator.
-	uuid, _ := hex.DecodeString(strings.ReplaceAll(m.ID, "-", ""))
-	var ms int64
-	for _, b := range uuid[:6] {
-		ms = ms<<8 | int64(b)
-	}
-	if ms != m.Created/1000 {
-		t.Fatalf("UUID timestamp %d differs from created %d", ms, m.Created)
 	}
 }
 

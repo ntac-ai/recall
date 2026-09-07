@@ -10,7 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestSnapshot(t *testing.T) {
@@ -180,7 +181,11 @@ func writeMemoryFixture(t *testing.T, dataDir, project, text string, created int
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := memory{ID: uuidV7(time.UnixMicro(created)), Created: created, Project: project, Agent: "test", Model: "test", Text: text, SHA256: hashMemory(text)}
+	id, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := memory{ID: id.String(), Created: created, Project: project, Agent: "test", Model: "test", Text: text, SHA256: hashMemory(text)}
 	data, err := json.Marshal(m)
 	if err != nil {
 		t.Fatal(err)
