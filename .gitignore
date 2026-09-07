@@ -1,6 +1,4 @@
-/.build
 /bin
 /vendor
 *.swp
 .DS_Store
-composer.lock
