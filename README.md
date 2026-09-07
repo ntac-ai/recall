@@ -10,11 +10,23 @@ Install the `recall` CLI in your `$PATH`.
 
 ### Save a Memory
 
-`recall save 'Project Name' 'Reminder to always use small DTOs when handling API request data.'`
+`recall save <project-name> <memory>`
+
+#### Example
+
+```shell
+recall save fieldsheet 'Always use final readonly DTOs when handling API request data.'
+```
 
 ### Snapshot Memories Into a Skill
 
-`recall snapshot 'Project Name' 'API Requests' --update|--overwrite`
+`recall snapshot <project-name> <skill-name>`
+
+#### Example
+
+```shell
+recall snapshot fieldsheet api-requests
+```
 
 ## Credits
 
