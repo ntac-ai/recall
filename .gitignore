@@ -1,4 +1,7 @@
 /bin
+/dist
+/recall
+/recall.exe
 /vendor
 *.swp
 .DS_Store
